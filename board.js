@@ -13,6 +13,7 @@
   var lastShown = "";
   var checked = {}; // id -> true while the 3-second undo window runs
   var timers = {};
+  var fx = {}; // id -> { kind, handle, leaving } for the check-off celebration
   var gone = {}; // id -> time checked off; hidden until the server agrees it's deleted
   var lastOk = 0;
   var loaded = false;
@@ -62,23 +63,42 @@
     T.done(id).catch(function () { /* retried by the next load */ });
   }
 
+  function rowFor(id) {
+    var rows = document.querySelectorAll(".task");
+    for (var i = 0; i < rows.length; i++) {
+      if (rows[i].getAttribute("data-id") === id) return rows[i];
+    }
+    return null;
+  }
+
   function toggle(id) {
+    if (fx[id] && fx[id].leaving) return;
     if (checked[id]) {
       clearTimeout(timers[id]);
       delete timers[id];
       delete checked[id];
+      if (fx[id]) fx[id].handle.cancel();
+      delete fx[id];
       render();
       return;
     }
     checked[id] = true;
     render();
+    var el = rowFor(id);
+    var kind = Celebrate.pick();
+    fx[id] = { kind: kind, handle: Celebrate.burst(kind, el && el.querySelector(".circle"), el) };
     timers[id] = setTimeout(function () {
       delete timers[id];
-      delete checked[id];
+      fx[id].leaving = true;
+      sendDone(id);
+      // Drop it from the data now, but let the row finish its exit before redrawing.
       tasks = tasks.filter(function (t) { return t.id !== id; });
       lastShown = JSON.stringify(tasks);
-      sendDone(id);
-      render();
+      Celebrate.exit(fx[id].kind, rowFor(id), fx[id].handle, function () {
+        delete checked[id];
+        delete fx[id];
+        render();
+      });
     }, UNDO_MS);
   }
 
@@ -86,6 +106,7 @@
     var btn = document.createElement("button");
     btn.type = "button";
     btn.className = checked[task.id] ? "task done" : "task";
+    btn.setAttribute("data-id", task.id);
     btn.setAttribute("aria-pressed", checked[task.id] ? "true" : "false");
 
     var inner = document.createElement("span");

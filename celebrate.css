@@ -1,0 +1,95 @@
+/* Check-off celebrations (celebrate.js). Transforms and opacity only, so an
+   iPad mini 2 keeps up. Keyframes carry fixed values only: no var() inside. */
+
+.fx-layer { position: fixed; left: 0; top: 0; width: 0; height: 0; pointer-events: none; z-index: 50; }
+.fx-abs { position: absolute; left: 0; top: 0; }
+.fx-confetti { position: absolute; left: -5px; top: -7px; border-radius: 2px; }
+
+.fx-ring {
+  position: absolute; width: 60px; height: 60px; margin: -30px 0 0 -30px; border-radius: 50%;
+  border: 3px solid #F2D16B; animation: fx-ring 600ms ease-out forwards;
+}
+@keyframes fx-ring {
+  from { transform: scale(0.4); opacity: 1; }
+  to { transform: scale(3.2); opacity: 0; }
+}
+.fx-star { position: absolute; }
+
+.fx-rocket { position: absolute; width: 44px; height: 44px; margin: -22px 0 0 -22px; }
+.fx-puff {
+  position: absolute; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%;
+  background: #B9B2A6; opacity: 0.75; transition: transform 800ms ease-out, opacity 800ms ease-out;
+}
+
+.fx-balloon {
+  position: absolute; left: -23px; top: -30px; width: 46px; height: 96px;
+  transform-origin: 50% 100%; animation: fx-sway 1.1s ease-in-out infinite alternate;
+}
+@keyframes fx-sway {
+  from { transform: rotate(-9deg); }
+  to { transform: rotate(9deg); }
+}
+
+.fx-stamp {
+  position: absolute; padding: 2px 16px; border: 4px solid #E0735A; border-radius: 10px;
+  color: #E0735A; font-family: "IBM Plex Sans", -apple-system, sans-serif; font-size: 34px; font-weight: 600;
+  letter-spacing: 0.08em; line-height: 1.2; white-space: nowrap; background: rgba(224, 115, 90, 0.08);
+  animation: fx-stamp 380ms cubic-bezier(.2, 1.3, .4, 1) forwards;
+}
+@keyframes fx-stamp {
+  0% { transform: translate(-50%, -50%) rotate(-24deg) scale(3); opacity: 0; }
+  55% { transform: translate(-50%, -50%) rotate(-11deg) scale(0.92); opacity: 1; }
+  100% { transform: translate(-50%, -50%) rotate(-12deg) scale(1); opacity: 1; }
+}
+.fx-stamp.fx-leave { animation: fx-stamp-leave 450ms ease-in forwards; }
+@keyframes fx-stamp-leave {
+  from { transform: translate(-50%, -50%) rotate(-12deg) scale(1); opacity: 1; }
+  to { transform: translate(-50%, 40%) rotate(4deg) scale(0.9); opacity: 0; }
+}
+
+/* The tapped circle pops. */
+.fx-pop { animation: fx-pop 420ms cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes fx-pop {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.45); }
+  100% { transform: scale(1); }
+}
+
+.fx-shake { animation: fx-shake 320ms ease-out 200ms; }
+@keyframes fx-shake {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(-6px, 2px); }
+  40% { transform: translate(5px, -2px); }
+  60% { transform: translate(-3px, 1px); }
+  80% { transform: translate(2px, 0); }
+}
+
+/* Exits: how the row leaves once the undo window is over. */
+.fx-exit-slide { animation: fx-exit-slide 450ms cubic-bezier(.5, 0, .9, .5) forwards; }
+@keyframes fx-exit-slide { to { transform: translateX(110%); opacity: 0; } }
+
+.fx-exit-shrink { animation: fx-exit-shrink 420ms cubic-bezier(.6, -0.4, .8, .4) forwards; }
+@keyframes fx-exit-shrink { to { transform: scale(0.3); opacity: 0; } }
+
+.fx-exit-whoosh { animation: fx-exit-whoosh 420ms forwards; }
+@keyframes fx-exit-whoosh {
+  0% { transform: translateX(0) skewX(0); animation-timing-function: ease-out; }
+  30% { transform: translateX(-4%) skewX(8deg); animation-timing-function: cubic-bezier(.6, 0, 1, .6); }
+  100% { transform: translateX(130%) skewX(-24deg); opacity: 0; }
+}
+
+.fx-exit-float { animation: fx-exit-float 480ms ease-in forwards; }
+@keyframes fx-exit-float { to { transform: translateY(-70px); opacity: 0; } }
+
+.fx-exit-drop { transform-origin: 0 50%; animation: fx-exit-drop 460ms cubic-bezier(.5, 0, .9, .5) forwards; }
+@keyframes fx-exit-drop {
+  30% { transform: rotate(-3deg); }
+  100% { transform: translateY(90px) rotate(10deg); opacity: 0; }
+}
+
+.fx-exit-fade { animation: fx-exit-fade 200ms linear forwards; }
+@keyframes fx-exit-fade { to { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-pop, .fx-shake { animation: none; }
+}

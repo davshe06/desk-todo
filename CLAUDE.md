@@ -20,6 +20,13 @@ field per task so concurrent edits don't clobber each other).
 - Redis env: `KV_REST_API_URL`/`KV_REST_API_TOKEN` (Vercel's Upstash
   integration) or `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN`.
 
+- Check-off celebrations live in `celebrate.js` / `celebrate.css`, shared by
+  both pages. iOS 12 has no `Element.animate()`: fixed motion is CSS
+  keyframes (no `var()` inside them); random particle paths are CSS
+  transitions on inline styles, started two animation frames after insert.
+  Particles go in a fixed layer on `<body>` so list re-renders don't cut
+  them off. Animate `transform`/`opacity` only (iPad mini 2 is an A7).
+
 ## Before committing
 
 ```sh
