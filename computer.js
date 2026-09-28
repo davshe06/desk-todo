@@ -13,6 +13,7 @@
   var addCol = "todo";
   var editingId = null;
   var inFlight = 0;
+  var animating = 0;
 
   var input = document.getElementById("new-task");
   var addBtn = document.getElementById("add");
@@ -61,10 +62,10 @@
       T.askForKey("Paste the key you set as TODO_KEY in Vercel. You only need to do this once.", refresh);
       return;
     }
-    if (inFlight || editingId) return;
+    if (inFlight || editingId || animating) return;
     T.list()
       .then(function (list) {
-        if (inFlight || editingId) return;
+        if (inFlight || editingId || animating) return;
         tasks = list;
         render();
         setStatus("ok", "Synced");
@@ -84,9 +85,23 @@
     save(T.add(text, addCol));
   }
 
-  function complete(task) {
-    tasks = tasks.filter(function (t) { return t.id !== task.id; });
-    save(T.done(task.id));
+  // Saves at once; the celebration plays while the request is out, then the row leaves.
+  function complete(task, li, check) {
+    if (task.leaving) return;
+    task.leaving = true;
+    animating++;
+    li.className += " checked";
+    var kind = Celebrate.pick();
+    var handle = Celebrate.burst(kind, check, li);
+    var request = T.done(task.id);
+    request.catch(function () { /* reported by save() below */ });
+    setTimeout(function () {
+      Celebrate.exit(kind, li, handle, function () {
+        animating--;
+        tasks = tasks.filter(function (t) { return t.id !== task.id; });
+        save(request);
+      });
+    }, kind === "stamp" ? 900 : 500);
   }
 
   function move(task) {
@@ -125,7 +140,7 @@
     check.type = "button";
     check.setAttribute("aria-label", "Complete: " + task.text);
     check.title = "Done";
-    check.onclick = function () { complete(task); };
+    check.onclick = function () { complete(task, li, check); };
     li.appendChild(check);
 
     if (editingId === task.id) {
@@ -158,7 +173,7 @@
   function render() {
     Object.keys(COLS).forEach(function (col) {
       var list = document.getElementById("list-" + col);
-      var items = tasks.filter(function (t) { return t.col === col; });
+      var items = tasks.filter(function (t) { return t.col === col && !t.leaving; });
       list.textContent = "";
       items.forEach(function (t) { list.appendChild(row(t)); });
       if (!items.length) list.appendChild(el("li", "empty", col === "todo" ? "Nothing to do. Nice." : "Not waiting on anyone."));

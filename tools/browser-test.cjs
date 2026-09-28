@@ -200,6 +200,51 @@ async function run() {
     const sideways = await desk.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     assert.ok(sideways <= 0, "no horizontal scroll at 390px");
 
+    // Every celebration, forced with &fx=: plays on tap, cleans up on undo, and the task still leaves.
+    for (const k of Object.keys(hash)) delete hash[k];
+    for (const fx of ["confetti", "sparkles", "rocket", "balloons", "stamp"]) {
+      await api("POST", { op: "add", text: `Celebrate with ${fx}`, col: "todo" });
+      await api("POST", { op: "add", text: "Stays put", col: "waiting" });
+      const page = await browser.newPage({ viewport: { width: 1024, height: 768 }, hasTouch: true, isMobile: true });
+      watch(page, `board-${fx}`);
+      await page.goto(`${BASE}/board.html#key=${KEY}&fx=${fx}`);
+      const task = page.locator(`.task:has-text("Celebrate with ${fx}")`);
+      await task.waitFor();
+      await task.tap();
+      await page.waitForTimeout(fx === "balloons" ? 900 : 350);
+      const particles = await page.evaluate(() => (document.querySelector(".fx-layer") || { children: [] }).children.length);
+      assert.ok(particles > 0, `${fx}: particles on tap`);
+      if (SHOTS) await page.screenshot({ path: path.join(SHOTS, `fx-board-${fx}.png`) });
+      if (fx === "stamp") {
+        await task.tap(); // undo takes the stamp away
+        assert.equal(await page.locator(".fx-stamp").count(), 0, "undo removes the stamp");
+        await page.waitForTimeout(400);
+        await task.tap();
+      }
+      await page.waitForSelector(`.task:has-text("Celebrate with ${fx}")`, { state: "detached", timeout: 6000 });
+      await page.waitForTimeout(300);
+      assert.equal(await page.locator(".fx-stamp").count(), 0, `${fx}: nothing left behind`);
+      assert.ok(!JSON.stringify(hash).includes(`Celebrate with ${fx}`), `${fx}: deleted on the server`);
+      assert.equal(await page.locator('.task:has-text("Stays put")').count(), 1, `${fx}: other tasks untouched`);
+      await page.close();
+
+      // The computer page gets the same effect.
+      await api("POST", { op: "add", text: `Desk ${fx}`, col: "todo" });
+      const deskFx = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+      watch(deskFx, `computer-${fx}`);
+      await deskFx.goto(`${BASE}/#key=${KEY}&fx=${fx}`);
+      await waitText(deskFx, "#list-todo", `Desk ${fx}`);
+      await deskFx.click(`#list-todo .task:has-text("Desk ${fx}") .check`);
+      await deskFx.waitForTimeout(fx === "balloons" ? 900 : 300);
+      if (SHOTS) await deskFx.screenshot({ path: path.join(SHOTS, `fx-computer-${fx}.png`) });
+      await deskFx.waitForFunction((t) => !document.querySelector("#list-todo").textContent.includes(t), `Desk ${fx}`, { timeout: 5000 });
+      await waitText(deskFx, "#status-text", "Synced");
+      assert.ok(!JSON.stringify(hash).includes(`Desk ${fx}`), `${fx}: computer check-off deleted on the server`);
+      await deskFx.close();
+      for (const k of Object.keys(hash)) delete hash[k];
+    }
+    console.log("✓ Celebrations (all five, both pages)");
+
     assert.deepEqual(errors, [], "no page errors");
     console.log("✓ Computer page");
     console.log("✓ iPad board");

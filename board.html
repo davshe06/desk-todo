@@ -10,6 +10,7 @@
 <title>Desk To-Do</title>
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="icon" type="image/png" href="icon.png">
+<link rel="stylesheet" href="celebrate.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
 <style>
   /* Runs on iOS 12 Safari: no flex `gap`, so spacing is done with margins. */
@@ -38,7 +39,7 @@
   .stale .date, .stale .time { color: var(--muted); }
 
   .columns { flex: 1; display: flex; min-height: 0; }
-  .column { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .column { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch; }
   .column + .column { margin-left: 48px; }
   h2 { margin: 0 0 8px; padding-bottom: 12px; border-bottom: 2px solid var(--col); font-size: 15px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--col); }
 
@@ -116,6 +117,7 @@
 </div>
 
 <script src="common.js"></script>
+<script src="celebrate.js"></script>
 <script src="board.js"></script>
 </body>
 </html>

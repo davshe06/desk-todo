@@ -9,6 +9,12 @@ your desk shows them and checks them off with a tap.
   off; it disappears after 3 seconds (tap again to undo). Refreshes every 5
   seconds and says so if it loses the connection.
 
+Checking a task off plays one of five celebrations, picked at random and
+never the same twice running: **confetti**, **sparkles**, **rocket**,
+**balloons**, or a **DONE!** stamp. To always get one, add `&fx=rocket`
+(or any of those names) after the key in the link, e.g.
+`…/board.html#key=YOURKEY&fx=balloons`.
+
 No framework, no build step, no dependencies. The board runs on iOS 12 Safari
 (iPad mini 2–4).
 

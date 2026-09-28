@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Desk To-Do</title>
 <link rel="icon" type="image/png" href="icon.png">
+<link rel="stylesheet" href="celebrate.css">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
 <style>
@@ -48,7 +49,7 @@
   .col-head .swatch { width: 10px; height: 10px; border-radius: 50%; }
   .col-head h2 { margin: 0; font-size: 14px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
   .col-head .count { font-size: 14px; color: var(--muted); }
-  .list { list-style: none; margin: 0; padding: 0; background: var(--card); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+  .list { list-style: none; margin: 0; padding: 0; position: relative; background: var(--card); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
   .task { display: flex; align-items: center; gap: 14px; min-height: 60px; padding: 8px 12px 8px 18px; border-bottom: 1px solid var(--soft); }
   .task:last-child { border-bottom: 0; }
   .check { flex-shrink: 0; width: 26px; height: 26px; padding: 0; border: 2px solid var(--col); border-radius: 50%; background: transparent; }
@@ -58,6 +59,8 @@
   .edit { flex: 1; min-width: 0; height: 40px; padding: 0 8px; margin-left: -8px; border: 1px solid var(--line); border-radius: 8px; font-size: 17px; }
   .move { flex-shrink: 0; height: 36px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font-size: 14px; white-space: nowrap; }
   .move:hover { background: var(--soft); color: var(--ink); }
+  .task.checked .check { background: var(--col); }
+  .task.checked .text { text-decoration: line-through; color: var(--muted); }
   .task.pending button { pointer-events: none; opacity: 0.5; }
   .empty { padding: 20px 18px; font-size: 16px; color: var(--muted); }
   .foot { margin: 0; font-size: 14px; color: var(--muted); }
@@ -122,6 +125,7 @@
 </div>
 
 <script src="common.js"></script>
+<script src="celebrate.js"></script>
 <script src="computer.js"></script>
 </body>
 </html>
