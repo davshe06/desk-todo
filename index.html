@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Desk To-Do</title>
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
+<style>
+  :root {
+    --bg: #F6F3EE; --card: #FFFFFF; --ink: #1F1D1A; --muted: #625C53; --line: #E2DBD0; --soft: #EFEAE2;
+    --todo: #C8612F; --waiting: #2F4F9E; --ok-bg: #E6EFE7; --ok-ink: #2A5535; --ok-dot: #3C7A4B;
+    --warn-bg: #F8E4DA; --warn-ink: #8A3412; --focus: #B4461A;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: "IBM Plex Sans", system-ui, sans-serif; }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  button:focus-visible, input:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+  main { max-width: 1280px; margin: 0 auto; padding: 56px 72px; display: flex; flex-direction: column; gap: 32px; min-height: 100vh; }
+  header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  h1 { margin: 0 0 6px; font-family: "Fraunces", Georgia, serif; font-size: 44px; font-weight: 600; letter-spacing: -0.01em; }
+  .lede { margin: 0; font-size: 16px; color: var(--muted); }
+  .status { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; font-size: 14px; font-weight: 500; background: var(--ok-bg); color: var(--ok-ink); }
+  .status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok-dot); }
+  .status.saving { background: var(--soft); color: var(--muted); }
+  .status.saving .dot { background: var(--muted); }
+  .status.error { background: var(--warn-bg); color: var(--warn-ink); }
+  .status.error .dot { background: var(--warn-ink); }
+
+  .add { display: flex; flex-direction: column; gap: 8px; }
+  .add label { font-size: 14px; font-weight: 600; color: #4A453E; }
+  .add-bar { display: flex; align-items: center; gap: 12px; padding: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; flex-wrap: wrap; }
+  .add-bar:focus-within { border-color: var(--focus); box-shadow: 0 0 0 3px rgba(180, 70, 26, 0.15); }
+  .add-bar input:focus-visible { outline: 0; }
+  .add-bar input { flex: 1 1 240px; height: 48px; padding: 0 14px; border: 0; background: transparent; font-size: 18px; }
+  .seg { display: flex; padding: 4px; gap: 4px; background: var(--soft); border-radius: 12px; }
+  .seg button { height: 40px; padding: 0 16px; border: 0; border-radius: 9px; background: transparent; color: #4A453E; font-size: 15px; font-weight: 500; }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+  .primary { height: 48px; padding: 0 24px; border: 0; border-radius: 12px; background: var(--ink); color: var(--bg); font-size: 16px; font-weight: 600; }
+  .primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; }
+  .col-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .col-head .swatch { width: 10px; height: 10px; border-radius: 50%; }
+  .col-head h2 { margin: 0; font-size: 14px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+  .col-head .count { font-size: 14px; color: var(--muted); }
+  .list { list-style: none; margin: 0; padding: 0; background: var(--card); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+  .task { display: flex; align-items: center; gap: 14px; min-height: 60px; padding: 8px 12px 8px 18px; border-bottom: 1px solid var(--soft); }
+  .task:last-child { border-bottom: 0; }
+  .check { flex-shrink: 0; width: 26px; height: 26px; padding: 0; border: 2px solid var(--col); border-radius: 50%; background: transparent; }
+  .check:hover { background: var(--soft); }
+  .text { flex: 1; min-width: 0; padding: 6px 8px; margin-left: -8px; border: 0; border-radius: 8px; background: transparent; font-size: 17px; text-align: left; overflow-wrap: anywhere; }
+  .text:hover { background: var(--soft); }
+  .edit { flex: 1; min-width: 0; height: 40px; padding: 0 8px; margin-left: -8px; border: 1px solid var(--line); border-radius: 8px; font-size: 17px; }
+  .move { flex-shrink: 0; height: 36px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font-size: 14px; white-space: nowrap; }
+  .move:hover { background: var(--soft); color: var(--ink); }
+  .task.pending button { pointer-events: none; opacity: 0.5; }
+  .empty { padding: 20px 18px; font-size: 16px; color: var(--muted); }
+  .foot { margin: 0; font-size: 14px; color: var(--muted); }
+
+  .gate { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(31, 29, 26, 0.55); }
+  .gate form { width: 100%; max-width: 420px; padding: 28px; background: var(--card); border-radius: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .gate h2 { margin: 0; font-family: "Fraunces", Georgia, serif; font-size: 26px; font-weight: 600; }
+  .gate p { margin: 0; color: var(--muted); }
+  .gate label { font-size: 14px; font-weight: 600; }
+  .gate input { height: 48px; padding: 0 14px; border: 1px solid var(--line); border-radius: 10px; font-size: 17px; }
+
+  @media (max-width: 800px) {
+    main { padding: 32px 20px; }
+    .columns { grid-template-columns: minmax(0, 1fr); }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1>Desk To-Do</h1>
+      <p class="lede">Add tasks here. They show up on the iPad within a few seconds.</p>
+    </div>
+    <div id="status" class="status saving" role="status"><span class="dot"></span><span id="status-text">Connecting…</span></div>
+  </header>
+
+  <div class="add">
+    <label for="new-task">New task</label>
+    <div class="add-bar">
+      <input id="new-task" type="text" placeholder="What needs doing?" maxlength="140" autocomplete="off">
+      <div class="seg" role="group" aria-label="Add to column">
+        <button type="button" data-col="todo" aria-pressed="true">To Do</button>
+        <button type="button" data-col="waiting" aria-pressed="false">Awaiting Response</button>
+      </div>
+      <button id="add" type="button" class="primary">Add</button>
+    </div>
+  </div>
+
+  <div class="columns">
+    <section style="--col: var(--todo)">
+      <div class="col-head"><span class="swatch" style="background: var(--todo)"></span><h2>To Do</h2><span class="count" id="count-todo">0</span></div>
+      <ul class="list" id="list-todo"></ul>
+    </section>
+    <section style="--col: var(--waiting)">
+      <div class="col-head"><span class="swatch" style="background: var(--waiting)"></span><h2>Awaiting Response</h2><span class="count" id="count-waiting">0</span></div>
+      <ul class="list" id="list-waiting"></ul>
+    </section>
+  </div>
+
+  <p class="foot">Press Enter to add. Click a task to edit it. Checking a task off removes it from both screens. <span id="slots">0</span> of 10 slots used.</p>
+</main>
+
+<div id="key-gate" class="gate" hidden>
+  <form id="key-form">
+    <h2>Enter your access key</h2>
+    <p id="key-message"></p>
+    <label for="key-input">Access key</label>
+    <input id="key-input" type="password" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <button type="submit" class="primary">Save</button>
+  </form>
+</div>
+
+<script src="common.js"></script>
+<script src="computer.js"></script>
+</body>
+</html>
