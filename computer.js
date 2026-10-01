@@ -80,7 +80,7 @@
       setStatus("error", "List is full. Check something off first");
       return;
     }
-    tasks.push({ id: "pending-" + Date.now(), text: text, col: addCol, created: Date.now(), pending: true });
+    tasks.push({ id: "pending-" + Date.now(), text: text, col: addCol, created: Date.now(), touched: Date.now(), pending: true });
     input.value = "";
     save(T.add(text, addCol));
   }
@@ -106,6 +106,7 @@
 
   function move(task) {
     task.col = COLS[task.col].moveTo;
+    task.touched = Date.now();
     save(T.move(task.id, task.col));
   }
 
@@ -120,6 +121,7 @@
     var text = field.value.replace(/\s+/g, " ").trim();
     if (keep && text && text !== task.text) {
       task.text = text;
+      task.touched = Date.now();
       save(T.edit(task.id, text));
     } else {
       render();
@@ -135,6 +137,7 @@
 
   function row(task) {
     var li = el("li", task.pending ? "task pending" : "task");
+    li.setAttribute("data-touched", T.touchedOf(task));
 
     var check = el("button", "check");
     check.type = "button";
@@ -163,6 +166,10 @@
       li.appendChild(text);
     }
 
+    var age = el("span", "age");
+    age.title = "Time since this task was added, edited or moved";
+    li.appendChild(age);
+
     var mv = el("button", "move", COLS[task.col].moveLabel);
     mv.type = "button";
     mv.onclick = function () { move(task); };
@@ -180,6 +187,7 @@
       document.getElementById("count-" + col).textContent = items.length;
     });
     document.getElementById("slots").textContent = tasks.length;
+    T.applyAges();
     var full = tasks.length >= T.MAX_TASKS;
     addBtn.disabled = full;
     input.placeholder = full ? "List is full. Check something off first." : "What needs doing?";
@@ -204,6 +212,8 @@
   });
   window.addEventListener("focus", refresh);
   setInterval(refresh, POLL_MS);
+  setInterval(function () { T.applyAges(); }, 30000);
+  document.getElementById("max").textContent = T.MAX_TASKS;
 
   render();
   refresh();

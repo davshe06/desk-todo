@@ -67,6 +67,39 @@
     };
   }
 
+  // How long since a task was last actioned. Older tasks predate `touched`
+  // and fall back to when they were created.
+  var HOUR = 3600000;
+  var WARN_AFTER = 5 * HOUR;
+  var ALERT_AFTER = 26 * HOUR;
+
+  function ageOf(touched, now) {
+    var ms = Math.max(0, now - touched);
+    var hours = Math.floor(ms / HOUR);
+    return {
+      level: ms > ALERT_AFTER ? "alert" : ms > WARN_AFTER ? "warn" : "",
+      label: hours < 24 ? hours + "h" : Math.floor(hours / 24) + "d " + (hours % 24) + "h"
+    };
+  }
+
+  // Rows carry data-touched; this recolors them in place, so ages advance
+  // without redrawing the list (which would cut off a running animation).
+  function applyAges(root) {
+    var now = Date.now();
+    var rows = (root || document).querySelectorAll("[data-touched]");
+    for (var i = 0; i < rows.length; i++) {
+      var age = ageOf(Number(rows[i].getAttribute("data-touched")), now);
+      rows[i].classList.toggle("age-warn", age.level === "warn");
+      rows[i].classList.toggle("age-alert", age.level === "alert");
+      var badge = rows[i].querySelector(".age");
+      if (badge) badge.textContent = age.level ? age.label : "";
+    }
+  }
+
+  function touchedOf(task) {
+    return task.touched || task.created || Date.now();
+  }
+
   function clockParts(now) {
     return {
       date: now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }),
@@ -75,11 +108,13 @@
   }
 
   window.DeskTodo = {
-    MAX_TASKS: 10,
+    MAX_TASKS: 15,
     getKey: getKey,
     clearKey: clearKey,
     askForKey: askForKey,
     clockParts: clockParts,
+    applyAges: applyAges,
+    touchedOf: touchedOf,
     list: function () { return request("GET"); },
     add: function (text, col) { return request("POST", { op: "add", text: text, col: col }); },
     move: function (id, col) { return request("POST", { op: "move", id: id, col: col }); },

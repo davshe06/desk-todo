@@ -42,15 +42,33 @@ async function testApi(hash) {
   assert.equal(r.json.tasks[1].text.length, 140, "text capped");
   assert.equal(r.json.tasks[1].col, "todo", "bad column falls back to todo");
 
+  assert.ok(r.json.tasks[0].touched >= r.json.tasks[0].created, "new task is touched");
+
+  // Moving or editing resets the age clock; a no-op edit or move doesn't.
+  const backdate = () => {
+    const t = JSON.parse(hash[id]);
+    t.touched = 1000;
+    hash[id] = JSON.stringify(t);
+  };
+  const touchedNow = (res) => res.json.tasks.find((t) => t.id === id).touched;
+  backdate();
   r = await api("POST", { op: "move", id, col: "waiting" });
   assert.equal(r.json.tasks.find((t) => t.id === id).col, "waiting", "move");
+  assert.ok(touchedNow(r) > 1000, "move touches");
+  backdate();
+  r = await api("POST", { op: "move", id, col: "waiting" });
+  assert.equal(touchedNow(r), 1000, "move to the same column doesn't touch");
   r = await api("POST", { op: "edit", id, text: "Send Q3 invoice" });
   assert.equal(r.json.tasks.find((t) => t.id === id).text, "Send Q3 invoice", "edit");
+  assert.ok(touchedNow(r) > 1000, "edit touches");
+  backdate();
+  r = await api("POST", { op: "edit", id, text: "Send Q3 invoice" });
+  assert.equal(touchedNow(r), 1000, "unchanged edit doesn't touch");
 
-  for (let i = 0; i < 8; i++) await api("POST", { op: "add", text: `t${i}` });
-  r = await api("POST", { op: "add", text: "eleventh" });
-  assert.equal(r.status, 409, "11th task refused");
-  assert.equal(r.json.tasks.length, 10);
+  for (let i = 0; i < 13; i++) await api("POST", { op: "add", text: `t${i}` });
+  r = await api("POST", { op: "add", text: "sixteenth" });
+  assert.equal(r.status, 409, "16th task refused");
+  assert.equal(r.json.tasks.length, 15);
 
   r = await api("POST", { op: "done", id });
   assert.ok(!r.json.tasks.some((t) => t.id === id), "done removes");
@@ -150,24 +168,24 @@ async function run() {
     await waitText(desk, "#list-todo", "Nothing to do");
     await waitText(ipad, "#list-todo", "All clear");
 
-    // Fill to ten: the Add button disables and the board compacts a long column.
-    for (let i = 1; i <= 9; i++) {
+    // Fill to fifteen: the Add button disables and the board tightens a long column.
+    for (let i = 1; i <= 14; i++) {
       await desk.fill("#new-task", `Task number ${i}`);
       await desk.press("#new-task", "Enter");
     }
-    await waitText(desk, "#slots", "10");
+    await waitText(desk, "#slots", "15");
     await waitText(desk, "#status-text", "Synced");
-    assert.ok(await desk.isDisabled("#add"), "add disabled at ten");
+    assert.ok(await desk.isDisabled("#add"), "add disabled at fifteen");
     await desk.fill("#new-task", "one too many");
     await desk.press("#new-task", "Enter");
     await waitText(desk, "#status-text", "full");
-    await waitText(ipad, "#count-waiting", "10");
-    assert.ok((await ipad.getAttribute("#col-waiting", "class")).includes("compact"), "long column compacts");
+    await waitText(ipad, "#count-waiting", "15");
+    assert.ok((await ipad.getAttribute("#col-waiting", "class")).includes("dense"), "long column goes dense");
     const overflow = await ipad.evaluate(() => {
       const c = document.getElementById("col-waiting");
       return c.scrollHeight - c.clientHeight;
     });
-    assert.ok(overflow <= 0, `ten tasks fit on the iPad without scrolling (overflow ${overflow}px)`);
+    assert.ok(overflow <= 0, `fifteen tasks fit on the iPad without scrolling (overflow ${overflow}px)`);
     if (SHOTS) await desk.screenshot({ path: path.join(SHOTS, "computer-full.png") });
     if (SHOTS) await ipad.screenshot({ path: path.join(SHOTS, "board-full.png") });
 
@@ -244,6 +262,61 @@ async function run() {
       for (const k of Object.keys(hash)) delete hash[k];
     }
     console.log("✓ Celebrations (all five, both pages)");
+
+    // Age colors: fresh, 6 hours (orange), 27 hours (red), and an old task with no `touched` (uses created).
+    for (const k of Object.keys(hash)) delete hash[k];
+    const HOUR = 3600000;
+    const seed = (id, text, col, hoursAgo, field = "touched") => {
+      const t = { id, text, col, created: Date.now() - hoursAgo * HOUR };
+      if (field === "touched") t.touched = Date.now() - hoursAgo * HOUR;
+      hash[id] = JSON.stringify(t);
+    };
+    seed("a1", "Fresh task", "todo", 1);
+    seed("a2", "Six hours old", "todo", 6);
+    seed("a3", "Over a day old", "waiting", 27);
+    seed("a4", "Legacy task", "waiting", 30, "created");
+    for (const [name, url, sel] of [
+      ["board", `${BASE}/board.html#key=${KEY}`, ".task"],
+      ["computer", `${BASE}/#key=${KEY}`, ".task"],
+    ]) {
+      const page = await browser.newPage({ viewport: name === "board" ? { width: 1024, height: 768 } : { width: 1280, height: 800 } });
+      watch(page, `ages-${name}`);
+      await page.goto(url);
+      await waitText(page, "#list-waiting", "Legacy task");
+      const ages = await page.evaluate((s) => Array.from(document.querySelectorAll(s)).map((r) => ({
+        text: r.textContent, warn: r.classList.contains("age-warn"), alert: r.classList.contains("age-alert"),
+        badge: r.querySelector(".age").textContent,
+      })), sel);
+      const find = (t) => ages.find((a) => a.text.includes(t));
+      assert.ok(!find("Fresh task").warn && !find("Fresh task").alert && find("Fresh task").badge === "", `${name}: fresh is plain`);
+      assert.ok(find("Six hours old").warn && find("Six hours old").badge === "6h", `${name}: 6h is orange`);
+      assert.ok(find("Over a day old").alert && find("Over a day old").badge === "1d 3h", `${name}: 27h is red`);
+      assert.ok(find("Legacy task").alert, `${name}: falls back to created`);
+      if (SHOTS) await page.screenshot({ path: path.join(SHOTS, `ages-${name}.png`) });
+      await page.close();
+    }
+    // Moving the red task on the computer resets it to plain on the board.
+    const mover = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    watch(mover, "ages-move");
+    await mover.goto(`${BASE}/#key=${KEY}`);
+    await mover.click('#list-waiting .task:has-text("Over a day old") .move');
+    await mover.waitForFunction(() => {
+      const r = Array.from(document.querySelectorAll("#list-todo .task")).find((n) => n.textContent.includes("Over a day old"));
+      return r && !r.classList.contains("age-alert");
+    });
+    await waitText(mover, "#status-text", "Synced");
+    assert.ok(JSON.parse(hash.a3).touched > Date.now() - 60000, "move reset the clock on the server");
+    await mover.close();
+    console.log("✓ Age colors");
+
+    // Keep-awake: the board offers a hint and survives whichever path the browser takes.
+    const awake = await browser.newPage({ viewport: { width: 1024, height: 768 }, hasTouch: true });
+    watch(awake, "keepawake");
+    await awake.goto(`${BASE}/board.html#key=${KEY}`);
+    await awake.waitForSelector("#awake-hint", { state: "attached" });
+    await awake.tap("header");
+    await awake.waitForTimeout(500);
+    await awake.close();
 
     assert.deepEqual(errors, [], "no page errors");
     console.log("✓ Computer page");

@@ -9,11 +9,15 @@
 // Every request must send the secret from the TODO_KEY env var in the
 // X-Todo-Key header. Each task is one field of the hash, so a check-off on
 // the iPad and an add on the computer never overwrite each other.
+//
+// A task is { id, text, col, created, touched }. `touched` is the last time it
+// was actioned (added, its text changed, or moved between columns); the pages
+// color a task by how long ago that was.
 
 const crypto = require("crypto");
 
 const HASH = "desk-todo:tasks";
-const MAX_TASKS = 10;
+const MAX_TASKS = 15;
 const MAX_TEXT = 140;
 const COLUMNS = ["todo", "waiting"];
 
@@ -113,12 +117,20 @@ module.exports = async function handler(req, res) {
       if ((await redis(["HLEN", HASH])) >= MAX_TASKS) {
         return send(res, 409, { error: `The list is full (${MAX_TASKS} tasks).`, tasks: await listTasks() });
       }
-      await saveTask({ id: crypto.randomUUID(), text, col, created: Date.now() });
+      const now = Date.now();
+      await saveTask({ id: crypto.randomUUID(), text, col, created: now, touched: now });
     } else if (body.op === "move" || body.op === "edit") {
       const task = await getTask(body.id);
       if (task) {
-        if (body.op === "move" && COLUMNS.includes(body.col)) task.col = body.col;
-        if (body.op === "edit" && cleanText(body.text)) task.text = cleanText(body.text);
+        const text = cleanText(body.text);
+        if (body.op === "move" && COLUMNS.includes(body.col) && body.col !== task.col) {
+          task.col = body.col;
+          task.touched = Date.now();
+        }
+        if (body.op === "edit" && text && text !== task.text) {
+          task.text = text;
+          task.touched = Date.now();
+        }
         await saveTask(task);
       }
     } else if (body.op === "done") {

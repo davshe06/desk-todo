@@ -59,6 +59,17 @@
   .edit { flex: 1; min-width: 0; height: 40px; padding: 0 8px; margin-left: -8px; border: 1px solid var(--line); border-radius: 8px; font-size: 17px; }
   .move { flex-shrink: 0; height: 36px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font-size: 14px; white-space: nowrap; }
   .move:hover { background: var(--soft); color: var(--ink); }
+  .age { flex-shrink: 0; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .age:empty { display: none; }
+  .task.age-warn { background: #FCE1C6; }
+  .task.age-warn .age { color: #8A3B0A; }
+  .task.age-alert { background: #F3C0BA; }
+  .task.age-alert .age { color: #8E1B18; }
+  .task.age-warn .move, .task.age-alert .move { color: #4A453E; }
+  .task.age-warn .move:hover, .task.age-alert .move:hover, .task.age-warn .text:hover, .task.age-alert .text:hover { background: rgba(255, 255, 255, 0.5); }
+  .key-warn, .key-alert { padding: 0 6px; border-radius: 4px; color: var(--ink); }
+  .key-warn { background: #FCE1C6; }
+  .key-alert { background: #F3C0BA; }
   .task.checked .check { background: var(--col); }
   .task.checked .text { text-decoration: line-through; color: var(--muted); }
   .task.pending button { pointer-events: none; opacity: 0.5; }
@@ -111,7 +122,7 @@
     </section>
   </div>
 
-  <p class="foot">Press Enter to add. Click a task to edit it. Checking a task off removes it from both screens. <span id="slots">0</span> of 10 slots used.</p>
+  <p class="foot">Press Enter to add. Click a task to edit it. Checking a task off removes it from both screens. <span id="slots">0</span> of <span id="max">15</span> slots used.<br>A task turns <span class="key-warn">orange</span> after 5 hours without being edited or moved, and <span class="key-alert">red</span> after 26.</p>
 </main>
 
 <div id="key-gate" class="gate" hidden>

@@ -107,6 +107,7 @@
     btn.type = "button";
     btn.className = checked[task.id] ? "task done" : "task";
     btn.setAttribute("data-id", task.id);
+    btn.setAttribute("data-touched", T.touchedOf(task));
     btn.setAttribute("aria-pressed", checked[task.id] ? "true" : "false");
 
     var inner = document.createElement("span");
@@ -117,12 +118,15 @@
     var label = document.createElement("span");
     label.className = "label";
     label.textContent = task.text;
+    var age = document.createElement("span");
+    age.className = "age";
     var undo = document.createElement("span");
     undo.className = "undo";
     undo.textContent = "Tap to undo";
 
     inner.appendChild(circle);
     inner.appendChild(label);
+    inner.appendChild(age);
     inner.appendChild(undo);
     btn.appendChild(inner);
     btn.addEventListener("click", function () { toggle(task.id); });
@@ -130,6 +134,7 @@
   }
 
   function render() {
+    var longest = 0;
     ["todo", "waiting"].forEach(function (col) {
       var items = tasks.filter(function (t) { return t.col === col; });
       var list = document.getElementById("list-" + col);
@@ -142,8 +147,13 @@
         list.appendChild(empty);
       }
       document.getElementById("count-" + col).textContent = items.length;
-      document.getElementById("col-" + col).className = items.length > 6 ? "column compact" : "column";
+      // Tighter rows as a column fills, so up to 15 still fit without scrolling.
+      document.getElementById("col-" + col).className =
+        items.length > 10 ? "column dense" : items.length > 6 ? "column compact" : "column";
+      longest = Math.max(longest, items.length);
     });
+    board.classList.toggle("packed", longest > 10);
+    T.applyAges(board);
   }
 
   function tick() {
@@ -161,7 +171,8 @@
     } else {
       fresh.textContent = "Offline · last updated " + T.clockParts(new Date(lastOk)).time;
     }
-    board.className = lastOk && age >= STALE_MS ? "board stale" : "board";
+    board.classList.toggle("stale", !!lastOk && age >= STALE_MS);
+    T.applyAges(board);
 
     // Pick up new deploys: reload once overnight, when nothing is mid-undo.
     if (now.getHours() === 3 && Date.now() - loadedAt > 3600000 && !Object.keys(timers).length) {

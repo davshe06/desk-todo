@@ -4,7 +4,7 @@ A tiny two-column to-do list. Add tasks from your computer; an iPad mini on
 your desk shows them and checks them off with a tap.
 
 - **Computer** (`/`): add, edit, move between **To Do** and **Awaiting
-  Response**, and complete tasks. Up to 10 tasks.
+  Response**, and complete tasks. Up to 15 tasks.
 - **iPad** (`/board.html`): a dark, full-screen board. Tap a task to check it
   off; it disappears after 3 seconds (tap again to undo). Refreshes every 5
   seconds and says so if it loses the connection.
@@ -14,6 +14,14 @@ never the same twice running: **confetti**, **sparkles**, **rocket**,
 **balloons**, or a **DONE!** stamp. To always get one, add `&fx=rocket`
 (or any of those names) after the key in the link, e.g.
 `…/board.html#key=YOURKEY&fx=balloons`.
+
+A task turns **orange** once it's gone more than 5 hours without being added,
+edited, or moved between columns, and **red** after 26 hours. Its age shows
+on the row.
+
+The board tries to keep the iPad's screen on (a silent looping video on
+older iOS, the Wake Lock API on newer). The reliable fix is still *Settings →
+Display & Brightness → Auto-Lock → Never*.
 
 No framework, no build step, no dependencies. The board runs on iOS 12 Safari
 (iPad mini 2–4).
