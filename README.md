@@ -4,16 +4,33 @@ A tiny two-column to-do list. Add tasks from your computer; an iPad mini on
 your desk shows them and checks them off with a tap.
 
 - **Computer** (`/`): add, edit, move between **To Do** and **Awaiting
-  Response**, and complete tasks. Up to 10 tasks.
+  Response**, and complete tasks. Up to 15 tasks.
 - **iPad** (`/board.html`): a dark, full-screen board. Tap a task to check it
-  off; it disappears after 3 seconds (tap again to undo). Refreshes every 5
-  seconds and says so if it loses the connection.
+  off; it disappears after 3 seconds (tap again to undo). Checks for changes
+  every 15 seconds, pauses overnight (8 PM–7 AM on the iPad's clock; a tap
+  still refreshes), and says so if it loses the connection.
+- **People** (`/admin.html`, admin key only): give other people their own
+  private lists. Add someone by name and the page gives you their computer
+  and iPad links to send them. Rename, issue a new key (old links stop
+  working), or remove them (deletes their list).
+
+Each list is private: a person's key opens their list and nothing else. Your
+`TODO_KEY` is the admin key; it keeps your original list and is the only key
+that can open the People page.
 
 Checking a task off plays one of five celebrations, picked at random and
 never the same twice running: **confetti**, **sparkles**, **rocket**,
 **balloons**, or a **DONE!** stamp. To always get one, add `&fx=rocket`
 (or any of those names) after the key in the link, e.g.
 `…/board.html#key=YOURKEY&fx=balloons`.
+
+A task turns **orange** once it's gone more than 5 hours without being added,
+edited, or moved between columns, and **red** after 26 hours. Its age shows
+on the row.
+
+The board tries to keep the iPad's screen on (a silent looping video on
+older iOS, the Wake Lock API on newer). The reliable fix is still *Settings →
+Display & Brightness → Auto-Lock → Never*.
 
 No framework, no build step, no dependencies. The board runs on iOS 12 Safari
 (iPad mini 2–4).
@@ -37,7 +54,7 @@ board.html + board.js ────┘        checks X-Todo-Key against TODO_KEY
    a long random value (for example the output of `openssl rand -hex 16`).
    Then *Deployments → Redeploy* so the function picks it up.
 4. **Computer.** Open `https://<your-project>.vercel.app/#key=<TODO_KEY>` and
-   bookmark it.
+   bookmark it. "Manage people →" under the title opens the People page.
 5. **iPad.** In Safari open
    `https://<your-project>.vercel.app/board.html#key=<TODO_KEY>`, then
    *Share → Add to Home Screen*. Open it from the home screen so it runs
@@ -54,5 +71,6 @@ missing or wrong, either page asks for it.
 
 ```sh
 node tools/dev-server.cjs      # http://localhost:3000/#key=dev-key (fake in-memory Redis)
+                               # add &poll=2&quiet=off to check every 2s and never pause
 node tools/browser-test.cjs    # API + both pages in Chromium
 ```

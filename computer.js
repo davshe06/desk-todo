@@ -7,7 +7,7 @@
     todo: { label: "To Do", moveTo: "waiting", moveLabel: "Move to Awaiting →" },
     waiting: { label: "Awaiting Response", moveTo: "todo", moveLabel: "← Move to To Do" }
   };
-  var POLL_MS = 10000;
+  var POLL_MS = T.pollMs(15000);
 
   var tasks = [];
   var addCol = "todo";
@@ -20,8 +20,24 @@
   var statusEl = document.getElementById("status");
   var statusText = document.getElementById("status-text");
 
+  // "Sam's list", or for the admin, a link to manage people.
+  function showWho() {
+    var me = T.me;
+    if (!me) return;
+    var who = document.getElementById("who");
+    who.textContent = me.admin ? "Your list · " : me.name + "\u2019s list";
+    if (me.admin) {
+      var a = document.createElement("a");
+      a.href = "admin.html" + location.hash;
+      a.textContent = "Manage people \u2192";
+      who.appendChild(a);
+    }
+    who.hidden = false;
+  }
+
   function setStatus(kind, text) {
     statusEl.className = "status " + kind;
+    if (kind === "ok") showWho();
     statusText.textContent = text;
   }
 
@@ -59,7 +75,7 @@
 
   function refresh() {
     if (!T.getKey()) {
-      T.askForKey("Paste the key you set as TODO_KEY in Vercel. You only need to do this once.", refresh);
+      T.askForKey("Paste the access key from your link. You only need to do this once.", refresh);
       return;
     }
     if (inFlight || editingId || animating) return;
@@ -80,7 +96,7 @@
       setStatus("error", "List is full. Check something off first");
       return;
     }
-    tasks.push({ id: "pending-" + Date.now(), text: text, col: addCol, created: Date.now(), pending: true });
+    tasks.push({ id: "pending-" + Date.now(), text: text, col: addCol, created: Date.now(), touched: Date.now(), pending: true });
     input.value = "";
     save(T.add(text, addCol));
   }
@@ -106,6 +122,7 @@
 
   function move(task) {
     task.col = COLS[task.col].moveTo;
+    task.touched = Date.now();
     save(T.move(task.id, task.col));
   }
 
@@ -120,6 +137,7 @@
     var text = field.value.replace(/\s+/g, " ").trim();
     if (keep && text && text !== task.text) {
       task.text = text;
+      task.touched = Date.now();
       save(T.edit(task.id, text));
     } else {
       render();
@@ -135,6 +153,7 @@
 
   function row(task) {
     var li = el("li", task.pending ? "task pending" : "task");
+    li.setAttribute("data-touched", T.touchedOf(task));
 
     var check = el("button", "check");
     check.type = "button";
@@ -163,6 +182,10 @@
       li.appendChild(text);
     }
 
+    var age = el("span", "age");
+    age.title = "Time since this task was added, edited or moved";
+    li.appendChild(age);
+
     var mv = el("button", "move", COLS[task.col].moveLabel);
     mv.type = "button";
     mv.onclick = function () { move(task); };
@@ -180,6 +203,7 @@
       document.getElementById("count-" + col).textContent = items.length;
     });
     document.getElementById("slots").textContent = tasks.length;
+    T.applyAges();
     var full = tasks.length >= T.MAX_TASKS;
     addBtn.disabled = full;
     input.placeholder = full ? "List is full. Check something off first." : "What needs doing?";
@@ -203,7 +227,10 @@
     if (!document.hidden) refresh();
   });
   window.addEventListener("focus", refresh);
-  setInterval(refresh, POLL_MS);
+  // Only checks while the tab is showing; coming back to it checks at once.
+  setInterval(function () { if (!document.hidden) refresh(); }, POLL_MS);
+  setInterval(function () { T.applyAges(); }, 30000);
+  document.getElementById("max").textContent = T.MAX_TASKS;
 
   render();
   refresh();

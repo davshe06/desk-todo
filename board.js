@@ -4,7 +4,7 @@
   "use strict";
 
   var T = window.DeskTodo;
-  var POLL_MS = 5000;
+  var POLL_MS = T.pollMs(15000);
   var UNDO_MS = 3000;
   var STALE_MS = 60000;
   var CHECK_SVG = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#141311" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>';
@@ -25,9 +25,15 @@
     return list.filter(function (t) { return !gone[t.id]; });
   }
 
-  function load() {
+  // Scheduled checks skip quiet hours; a tap, reopening the app, or the first
+  // load always checks (force).
+  function load(force) {
     if (!T.getKey()) {
-      T.askForKey("Type the key you set as TODO_KEY in Vercel. You only need to do this once.", load);
+      T.askForKey("Type the access key from your link. You only need to do this once.", function () { load(true); });
+      return;
+    }
+    if (force !== true && T.isQuiet(new Date())) {
+      tick();
       return;
     }
     T.list()
@@ -52,7 +58,7 @@
       .catch(function (err) {
         if (err.status === 401) {
           T.clearKey();
-          T.askForKey("That key didn't work. Check it and try again.", load);
+          T.askForKey("That key didn't work. Check it and try again.", function () { load(true); });
         }
         tick();
       });
@@ -107,6 +113,7 @@
     btn.type = "button";
     btn.className = checked[task.id] ? "task done" : "task";
     btn.setAttribute("data-id", task.id);
+    btn.setAttribute("data-touched", T.touchedOf(task));
     btn.setAttribute("aria-pressed", checked[task.id] ? "true" : "false");
 
     var inner = document.createElement("span");
@@ -117,12 +124,15 @@
     var label = document.createElement("span");
     label.className = "label";
     label.textContent = task.text;
+    var age = document.createElement("span");
+    age.className = "age";
     var undo = document.createElement("span");
     undo.className = "undo";
     undo.textContent = "Tap to undo";
 
     inner.appendChild(circle);
     inner.appendChild(label);
+    inner.appendChild(age);
     inner.appendChild(undo);
     btn.appendChild(inner);
     btn.addEventListener("click", function () { toggle(task.id); });
@@ -130,6 +140,7 @@
   }
 
   function render() {
+    var longest = 0;
     ["todo", "waiting"].forEach(function (col) {
       var items = tasks.filter(function (t) { return t.col === col; });
       var list = document.getElementById("list-" + col);
@@ -142,8 +153,13 @@
         list.appendChild(empty);
       }
       document.getElementById("count-" + col).textContent = items.length;
-      document.getElementById("col-" + col).className = items.length > 6 ? "column compact" : "column";
+      // Tighter rows as a column fills, so up to 15 still fit without scrolling.
+      document.getElementById("col-" + col).className =
+        items.length > 10 ? "column dense" : items.length > 6 ? "column compact" : "column";
+      longest = Math.max(longest, items.length);
     });
+    board.classList.toggle("packed", longest > 10);
+    T.applyAges(board);
   }
 
   function tick() {
@@ -154,14 +170,18 @@
 
     var fresh = document.getElementById("fresh");
     var age = Date.now() - lastOk;
-    if (!lastOk) {
+    var quiet = T.isQuiet(now);
+    if (quiet && lastOk) {
+      fresh.textContent = "Paused overnight · back at " + T.QUIET_UNTIL + " AM";
+    } else if (!lastOk) {
       fresh.textContent = "Connecting…";
     } else if (age < STALE_MS) {
       fresh.textContent = "Updated just now";
     } else {
       fresh.textContent = "Offline · last updated " + T.clockParts(new Date(lastOk)).time;
     }
-    board.className = lastOk && age >= STALE_MS ? "board stale" : "board";
+    board.classList.toggle("stale", !quiet && !!lastOk && age >= STALE_MS);
+    T.applyAges(board);
 
     // Pick up new deploys: reload once overnight, when nothing is mid-undo.
     if (now.getHours() === 3 && Date.now() - loadedAt > 3600000 && !Object.keys(timers).length) {
@@ -170,12 +190,16 @@
   }
 
   document.addEventListener("visibilitychange", function () {
-    if (!document.hidden) load();
+    if (!document.hidden) load(true);
   });
-  setInterval(load, POLL_MS);
+  // Overnight, a tap anywhere fetches the latest (at most every 30 seconds).
+  document.addEventListener("click", function () {
+    if (T.isQuiet(new Date()) && Date.now() - lastOk > 30000) load(true);
+  });
+  setInterval(function () { load(false); }, POLL_MS);
   setInterval(tick, 10000);
 
   tick();
   render();
-  load();
+  load(true);
 })();
