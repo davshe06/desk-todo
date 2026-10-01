@@ -2,9 +2,10 @@
 
 Two-column to-do list (To Do / Awaiting Response), max 15 tasks. Added and
 managed from a computer (`index.html` + `computer.js`), displayed and checked
-off on an iPad mini (`board.html` + `board.js`). Backend is one Vercel
-function, `api/tasks.js`, over one Upstash Redis hash (`desk-todo:tasks`, one
-field per task so concurrent edits don't clobber each other).
+off on an iPad mini (`board.html` + `board.js`). Backend: Vercel functions
+`api/tasks.js` (a list) and `api/people.js` (admin portal, `admin.html`),
+sharing `api/_lib.js`, over Upstash Redis. Each list is one hash, one field
+per task, so concurrent edits don't clobber each other.
 
 ## Rules
 
@@ -14,9 +15,17 @@ field per task so concurrent edits don't clobber each other).
   (Safari 14.1+); use margins. `<button>` can't be a flex container in old
   Safari; put a flex `<span>` inside.
 - No framework, no build step, no dependencies.
-- Auth is a shared secret: `TODO_KEY` env var ↔ `X-Todo-Key` header. The key
-  rides in the URL hash (`#key=…`) because an iOS home-screen app has storage
-  separate from Safari's.
+- Auth is a key per person in the `X-Todo-Key` header; the key alone picks
+  the list (`whoIs()` in `_lib.js`). `TODO_KEY` (env) is the admin: list
+  `desk-todo:tasks`, and the only key `api/people.js` accepts. Everyone else
+  is a field of `desk-todo:people` (key → `{id, name, created}`) with list
+  `desk-todo:tasks:<id>`. Key lookups are cached for 60s per warm instance.
+  Never let a request choose a list by id; lists are private.
+- The key rides in the URL hash (`#key=…`) because an iOS home-screen app
+  has storage separate from Safari's. `setKey()` keeps other hash params.
+- Redis budget (Upstash free tier): the board polls every 15s and skips
+  scheduled polls 8 PM–7 AM (`isQuiet()`); the computer page polls only while
+  visible. `#…&poll=N&quiet=off` overrides both, for tests.
 - Redis env: `KV_REST_API_URL`/`KV_REST_API_TOKEN` (Vercel's Upstash
   integration) or `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN`.
 
