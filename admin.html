@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Desk To-Do · People</title>
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
+<style>
+  :root {
+    --bg: #F6F3EE; --card: #FFFFFF; --ink: #1F1D1A; --muted: #625C53; --line: #E2DBD0; --soft: #EFEAE2;
+    --focus: #B4461A; --ok-bg: #E6EFE7; --ok-ink: #2A5535; --warn-bg: #F8E4DA; --warn-ink: #8A3412;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: "IBM Plex Sans", system-ui, sans-serif; }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  a { color: var(--focus); }
+
+  main { max-width: 960px; margin: 0 auto; padding: 56px 32px; display: flex; flex-direction: column; gap: 28px; }
+  .back { font-size: 15px; }
+  h1 { margin: 6px 0 6px; font-family: "Fraunces", Georgia, serif; font-size: 44px; font-weight: 600; letter-spacing: -0.01em; }
+  .lede { margin: 0; color: var(--muted); font-size: 16px; max-width: 640px; }
+
+  .add { display: flex; flex-direction: column; gap: 8px; }
+  .add label { font-size: 14px; font-weight: 600; color: #4A453E; }
+  .add-bar { display: flex; gap: 12px; padding: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; }
+  .add-bar:focus-within { border-color: var(--focus); box-shadow: 0 0 0 3px rgba(180, 70, 26, 0.15); }
+  .add-bar input { flex: 1; min-width: 0; height: 48px; padding: 0 14px; border: 0; background: transparent; font-size: 18px; }
+  .add-bar input:focus-visible { outline: 0; }
+  .primary { height: 48px; padding: 0 24px; border: 0; border-radius: 12px; background: var(--ink); color: var(--bg); font-size: 16px; font-weight: 600; white-space: nowrap; }
+
+  .message { margin: 0; padding: 12px 16px; border-radius: 12px; font-size: 15px; }
+  .message.ok { background: var(--ok-bg); color: var(--ok-ink); }
+  .message.error { background: var(--warn-bg); color: var(--warn-ink); }
+
+  .people { display: flex; flex-direction: column; gap: 16px; }
+  .person { padding: 20px 22px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; display: flex; flex-direction: column; gap: 14px; }
+  .person.new { border-color: var(--focus); box-shadow: 0 0 0 3px rgba(180, 70, 26, 0.15); }
+  .person-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .person-head h2 { margin: 0; font-size: 22px; font-weight: 600; }
+  .meta { color: var(--muted); font-size: 14px; }
+  .send-note { margin: 0; font-size: 15px; color: var(--focus); font-weight: 500; }
+  .link-row { display: grid; grid-template-columns: 140px minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+  .link-row span { font-size: 14px; font-weight: 600; color: #4A453E; }
+  .link-row input { height: 40px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--soft); font-size: 14px; font-family: ui-monospace, Menlo, monospace; color: #4A453E; }
+  .ghost { height: 40px; padding: 0 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); font-size: 14px; font-weight: 500; }
+  .ghost:hover { background: var(--soft); }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .danger { color: var(--warn-ink); }
+  .empty { padding: 24px; border: 1px dashed var(--line); border-radius: 16px; color: var(--muted); }
+
+  .gate { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(31, 29, 26, 0.55); }
+  .gate form { width: 100%; max-width: 420px; padding: 28px; background: var(--card); border-radius: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .gate h2 { margin: 0; font-family: "Fraunces", Georgia, serif; font-size: 26px; font-weight: 600; }
+  .gate p { margin: 0; color: var(--muted); }
+  .gate label { font-size: 14px; font-weight: 600; }
+  .gate input { height: 48px; padding: 0 14px; border: 1px solid var(--line); border-radius: 10px; font-size: 17px; }
+
+  @media (max-width: 700px) {
+    main { padding: 32px 20px; }
+    .link-row { grid-template-columns: minmax(0, 1fr) auto; }
+    .link-row span { grid-column: 1 / -1; }
+    .add-bar { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <div>
+    <a class="back" id="back" href="./">← Back to your list</a>
+    <h1>People</h1>
+    <p class="lede">Everyone here has their own private list. Send each person their two links: one for their computer, one for their iPad. Anyone with a link can see and change that list, so treat links like passwords.</p>
+  </div>
+
+  <form class="add" id="add-form">
+    <label for="new-name">Add a person</label>
+    <div class="add-bar">
+      <input id="new-name" type="text" placeholder="Their name" maxlength="40" autocomplete="off">
+      <button type="submit" class="primary">Add person</button>
+    </div>
+  </form>
+
+  <p class="message" id="message" role="status" hidden></p>
+  <div class="people" id="people"></div>
+</main>
+
+<div id="key-gate" class="gate" hidden>
+  <form id="key-form">
+    <h2>Enter your admin key</h2>
+    <p id="key-message"></p>
+    <label for="key-input">Admin key</label>
+    <input id="key-input" type="password" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <button type="submit" class="primary">Save</button>
+  </form>
+</div>
+
+<script src="common.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>

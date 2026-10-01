@@ -11,8 +11,15 @@ const path = require("path");
 const ROOT = path.join(__dirname, "..");
 const TYPES = { ".html": "text/html", ".js": "text/javascript", ".png": "image/png", ".css": "text/css" };
 
-function fakeRedis(hash, cmd) {
-  const [op, , a, b] = cmd;
+// One in-memory store: { [redisKey]: { [field]: value } }.
+function fakeRedis(store, cmd) {
+  const [op, name, a, b] = cmd;
+  if (op === "DEL") {
+    const had = name in store;
+    delete store[name];
+    return had ? 1 : 0;
+  }
+  const hash = store[name] || (store[name] = {});
   switch (op) {
     case "HGETALL": return [].concat(...Object.entries(hash));
     case "HGET": return hash[a] === undefined ? null : hash[a];
@@ -34,12 +41,13 @@ function readJson(req) {
 }
 
 function start(port, opts = {}) {
-  const hash = {};
+  const store = {};
+  const hash = (store["desk-todo:tasks"] = {}); // the admin's list
   const state = { redisDown: false };
   process.env.TODO_KEY = opts.key || process.env.TODO_KEY || "dev-key";
   process.env.KV_REST_API_URL = `http://127.0.0.1:${port}/__redis`;
   process.env.KV_REST_API_TOKEN = "dev-token";
-  const handler = require("../api/tasks.js");
+  const handlers = { "/api/tasks": require("../api/tasks.js"), "/api/people": require("../api/people.js") };
 
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, "http://x");
@@ -50,11 +58,11 @@ function start(port, opts = {}) {
         res.statusCode = 500;
         return res.end(JSON.stringify({ error: "down" }));
       }
-      return res.end(JSON.stringify({ result: fakeRedis(hash, cmd) }));
+      return res.end(JSON.stringify({ result: fakeRedis(store, cmd) }));
     }
-    if (url.pathname === "/api/tasks") {
+    if (handlers[url.pathname]) {
       if (req.method === "POST") req.body = await readJson(req);
-      return handler(req, res);
+      return handlers[url.pathname](req, res);
     }
     const file = path.join(ROOT, url.pathname === "/" ? "index.html" : path.normalize(url.pathname));
     if (!file.startsWith(ROOT) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
@@ -65,7 +73,7 @@ function start(port, opts = {}) {
     fs.createReadStream(file).pipe(res);
   });
 
-  return new Promise((resolve) => server.listen(port, () => resolve({ server, hash, state })));
+  return new Promise((resolve) => server.listen(port, () => resolve({ server, hash, store, state })));
 }
 
 module.exports = { start };

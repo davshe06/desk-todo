@@ -18,9 +18,13 @@
     try { return localStorage.getItem(KEY_STORE) || ""; } catch (e) { return ""; }
   }
 
+  // Puts the key in the URL, keeping any other settings there (fx=, poll=, …).
   function setKey(k) {
     try { localStorage.setItem(KEY_STORE, k); } catch (e) { /* private mode */ }
-    history.replaceState(null, "", location.pathname + location.search + "#key=" + encodeURIComponent(k));
+    var rest = location.hash.replace(/^#/, "").split("&").filter(function (p) {
+      return p && p.indexOf("key=") !== 0;
+    });
+    history.replaceState(null, "", location.pathname + location.search + "#" + ["key=" + encodeURIComponent(k)].concat(rest).join("&"));
   }
 
   function clearKey() {
@@ -28,24 +32,56 @@
     history.replaceState(null, "", location.pathname + location.search);
   }
 
-  function request(method, body) {
+  // Resolves with the whole JSON reply; rejects with err.status and err.json.
+  function call(path, method, body) {
     var opts = {
       method: method,
       headers: { "Content-Type": "application/json", "X-Todo-Key": getKey() }
     };
     if (body) opts.body = JSON.stringify(body);
     // The timestamp defeats any cache old Safari might apply to GETs.
-    return fetch("api/tasks?t=" + Date.now(), opts).then(function (res) {
+    return fetch(path + "?t=" + Date.now(), opts).then(function (res) {
       return res.json().catch(function () { return {}; }).then(function (json) {
         if (!res.ok) {
           var err = new Error(json.error || "HTTP " + res.status);
           err.status = res.status;
+          err.json = json;
           err.tasks = json.tasks;
           throw err;
         }
-        return json.tasks || [];
+        return json;
       });
     });
+  }
+
+  // Task calls resolve with the task list; `me` (whose list this is) is kept on DeskTodo.me.
+  function request(method, body) {
+    return call("api/tasks", method, body).then(function (json) {
+      if (json.me) window.DeskTodo.me = json.me;
+      return json.tasks || [];
+    });
+  }
+
+  function hashParam(name) {
+    var m = location.hash.match(new RegExp("[#&]" + name + "=([^&]+)"));
+    return m ? decodeURIComponent(m[1]) : null;
+  }
+
+  // How often to check for changes. #…&poll=2 (seconds) overrides it, for testing.
+  function pollMs(normal) {
+    var s = Number(hashParam("poll"));
+    return s > 0 ? s * 1000 : normal;
+  }
+
+  // The board stops checking overnight, 8 PM to 7 AM on the device's clock,
+  // to stay well inside the database's free tier. #…&quiet=off disables that.
+  var QUIET_FROM = 20;
+  var QUIET_UNTIL = 7;
+
+  function isQuiet(date) {
+    if (hashParam("quiet") === "off") return false;
+    var h = date.getHours();
+    return h >= QUIET_FROM || h < QUIET_UNTIL;
   }
 
   // Shows the one-time "enter your key" card. onSaved runs after a key is entered.
@@ -109,6 +145,11 @@
 
   window.DeskTodo = {
     MAX_TASKS: 15,
+    me: null,
+    call: call,
+    pollMs: pollMs,
+    isQuiet: isQuiet,
+    QUIET_UNTIL: QUIET_UNTIL,
     getKey: getKey,
     clearKey: clearKey,
     askForKey: askForKey,

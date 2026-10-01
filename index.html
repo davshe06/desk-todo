@@ -25,6 +25,8 @@
   header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
   h1 { margin: 0 0 6px; font-family: "Fraunces", Georgia, serif; font-size: 44px; font-weight: 600; letter-spacing: -0.01em; }
   .lede { margin: 0; font-size: 16px; color: var(--muted); }
+  .who { margin: 0 0 4px; font-size: 16px; font-weight: 600; }
+  .who a { color: var(--focus); }
   .status { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; font-size: 14px; font-weight: 500; background: var(--ok-bg); color: var(--ok-ink); }
   .status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok-dot); }
   .status.saving { background: var(--soft); color: var(--muted); }
@@ -94,7 +96,8 @@
   <header>
     <div>
       <h1>Desk To-Do</h1>
-      <p class="lede">Add tasks here. They show up on the iPad within a few seconds.</p>
+      <p class="who" id="who" hidden></p>
+      <p class="lede">Add tasks here. They show up on the iPad within about 15 seconds.</p>
     </div>
     <div id="status" class="status saving" role="status"><span class="dot"></span><span id="status-text">Connecting…</span></div>
   </header>

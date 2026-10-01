@@ -7,7 +7,7 @@
     todo: { label: "To Do", moveTo: "waiting", moveLabel: "Move to Awaiting →" },
     waiting: { label: "Awaiting Response", moveTo: "todo", moveLabel: "← Move to To Do" }
   };
-  var POLL_MS = 10000;
+  var POLL_MS = T.pollMs(15000);
 
   var tasks = [];
   var addCol = "todo";
@@ -20,8 +20,24 @@
   var statusEl = document.getElementById("status");
   var statusText = document.getElementById("status-text");
 
+  // "Sam's list", or for the admin, a link to manage people.
+  function showWho() {
+    var me = T.me;
+    if (!me) return;
+    var who = document.getElementById("who");
+    who.textContent = me.admin ? "Your list · " : me.name + "\u2019s list";
+    if (me.admin) {
+      var a = document.createElement("a");
+      a.href = "admin.html" + location.hash;
+      a.textContent = "Manage people \u2192";
+      who.appendChild(a);
+    }
+    who.hidden = false;
+  }
+
   function setStatus(kind, text) {
     statusEl.className = "status " + kind;
+    if (kind === "ok") showWho();
     statusText.textContent = text;
   }
 
@@ -59,7 +75,7 @@
 
   function refresh() {
     if (!T.getKey()) {
-      T.askForKey("Paste the key you set as TODO_KEY in Vercel. You only need to do this once.", refresh);
+      T.askForKey("Paste the access key from your link. You only need to do this once.", refresh);
       return;
     }
     if (inFlight || editingId || animating) return;
@@ -211,7 +227,8 @@
     if (!document.hidden) refresh();
   });
   window.addEventListener("focus", refresh);
-  setInterval(refresh, POLL_MS);
+  // Only checks while the tab is showing; coming back to it checks at once.
+  setInterval(function () { if (!document.hidden) refresh(); }, POLL_MS);
   setInterval(function () { T.applyAges(); }, 30000);
   document.getElementById("max").textContent = T.MAX_TASKS;
 
